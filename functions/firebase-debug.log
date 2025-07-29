@@ -1,0 +1,90 @@
+[debug] [2025-06-23T09:19:28.622Z] ----------------------------------------------------------------------
+[debug] [2025-06-23T09:19:28.625Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\Windows11\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js functions:shell
+[debug] [2025-06-23T09:19:28.625Z] CLI Version:   14.4.0
+[debug] [2025-06-23T09:19:28.625Z] Platform:      win32
+[debug] [2025-06-23T09:19:28.625Z] Node Version:  v22.15.1
+[debug] [2025-06-23T09:19:28.626Z] Time:          Mon Jun 23 2025 18:19:28 GMT+0900 (대한민국 표준시)
+[debug] [2025-06-23T09:19:28.627Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2025-06-23T09:19:28.770Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2025-06-23T09:19:28.770Z] > authorizing via signed-in user (hth9439@gmail.com)
+[debug] [2025-06-23T09:19:28.770Z] [iam] checking project finclass-4477f for permissions ["firebase.projects.get"]
+[debug] [2025-06-23T09:19:28.771Z] Checked if tokens are valid: true, expires at: 1750673500768
+[debug] [2025-06-23T09:19:28.771Z] Checked if tokens are valid: true, expires at: 1750673500768
+[debug] [2025-06-23T09:19:28.772Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/finclass-4477f:testIamPermissions [none]
+[debug] [2025-06-23T09:19:28.772Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/finclass-4477f:testIamPermissions x-goog-quota-user=projects/finclass-4477f
+[debug] [2025-06-23T09:19:28.772Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/finclass-4477f:testIamPermissions {"permissions":["firebase.projects.get"]}
+[debug] [2025-06-23T09:19:29.551Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/finclass-4477f:testIamPermissions 200
+[debug] [2025-06-23T09:19:29.551Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/finclass-4477f:testIamPermissions {"permissions":["firebase.projects.get"]}
+[debug] [2025-06-23T09:19:29.555Z] [functions] Functions Emulator only supports listening on one address (127.0.0.1). Not listening on ::1
+[debug] [2025-06-23T09:19:29.568Z] defaultcredentials: writing to file C:\Users\Windows11\AppData\Roaming\firebase\hth9439_gmail_com_application_default_credentials.json
+[debug] [2025-06-23T09:19:29.569Z] DEBUG: Setting GAC to C:\Users\Windows11\AppData\Roaming\firebase\hth9439_gmail_com_application_default_credentials.json
+[debug] [2025-06-23T09:19:29.569Z] Checked if tokens are valid: true, expires at: 1750673500768
+[debug] [2025-06-23T09:19:29.569Z] Checked if tokens are valid: true, expires at: 1750673500768
+[debug] [2025-06-23T09:19:29.569Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/finclass-4477f/adminSdkConfig [none]
+[debug] [2025-06-23T09:19:29.983Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/finclass-4477f/adminSdkConfig 200
+[debug] [2025-06-23T09:19:29.983Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects/finclass-4477f/adminSdkConfig {"projectId":"finclass-4477f","storageBucket":"finclass-4477f.firebasestorage.app"}
+[debug] [2025-06-23T09:19:29.994Z] [functions] Watching "C:\Users\Windows11\finclass\functions" for Cloud Functions...
+[debug] [2025-06-23T09:19:29.997Z] Validating nodejs source
+[debug] [2025-06-23T09:19:30.840Z] > [functions] package.json contents: {
+  "name": "functions",
+  "description": "Cloud Functions for Firebase",
+  "scripts": {
+    "lint": "eslint .",
+    "serve": "firebase emulators:start --only functions",
+    "shell": "firebase functions:shell",
+    "start": "npm run shell",
+    "deploy": "firebase deploy --only functions",
+    "logs": "firebase functions:log"
+  },
+  "engines": {
+    "node": "22"
+  },
+  "main": "index.js",
+  "dependencies": {
+    "axios": "^1.9.0",
+    "cors": "^2.8.5",
+    "dayjs": "^1.11.13",
+    "firebase-admin": "^12.7.0",
+    "firebase-functions": "^6.3.2"
+  },
+  "devDependencies": {
+    "eslint": "^8.15.0",
+    "eslint-config-google": "^0.14.0",
+    "firebase-functions-test": "^3.1.0"
+  },
+  "private": true
+}
+[debug] [2025-06-23T09:19:30.840Z] Building nodejs source
+[debug] [2025-06-23T09:19:30.841Z] Failed to find version of module node: reached end of search path C:\Users\Windows11\finclass\functions\node_modules
+[info] +  functions: Using node@22 from host. 
+[debug] [2025-06-23T09:19:30.842Z] Could not find functions.yaml. Must use http discovery
+[debug] [2025-06-23T09:19:30.847Z] Found firebase-functions binary at 'C:\Users\Windows11\finclass\functions\node_modules\.bin\firebase-functions'
+[info] Serving at port 8907
+
+[debug] [2025-06-23T09:19:31.480Z] Got response from /__/functions.yaml {"endpoints":{"addAdminRole":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","region":["asia-northeast3"],"labels":{},"callableTrigger":{},"entryPoint":"addAdminRole"},"requestTeacherAccount":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","region":["asia-northeast3"],"labels":{},"callableTrigger":{},"entryPoint":"requestTeacherAccount"},"approveTeacher":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","region":["asia-northeast3"],"labels":{},"callableTrigger":{},"entryPoint":"approveTeacher"},"createStudentAccounts":{"availableMemoryMb":512,"timeoutSeconds":120,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","region":["asia-northeast3"],"labels":{},"callableTrigger":{},"entryPoint":"createStudentAccounts"},"deleteStudentAccounts":{"availableMemoryMb":512,"timeoutSeconds":120,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","region":["asia-northeast3"],"labels":{},"callableTrigger":{},"entryPoint":"deleteStudentAccounts"},"resetPasswordHttp":{"availableMemoryMb":256,"timeoutSeconds":60,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","region":["asia-northeast3"],"labels":{},"httpsTrigger":{},"entryPoint":"resetPasswordHttp"},"fmpProxy":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","region":["asia-northeast3"],"secretEnvironmentVariables":[{"key":"FMP_API_KEY"}],"labels":{},"httpsTrigger":{},"entryPoint":"fmpProxy"},"resetPrefetchStatusDaily":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","region":["asia-northeast3"],"labels":{},"scheduleTrigger":{"schedule":"1 0 * * *","retryConfig":{},"timeZone":"Asia/Seoul"},"entryPoint":"resetPrefetchStatusDaily"},"prefetchQuotesData":{"availableMemoryMb":512,"timeoutSeconds":540,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","region":["asia-northeast3"],"secretEnvironmentVariables":[{"key":"FMP_API_KEY"}],"labels":{},"scheduleTrigger":{"schedule":"0 8 * * 1-5","retryConfig":{},"timeZone":"Asia/Seoul"},"entryPoint":"prefetchQuotesData"},"prefetchChartsData":{"availableMemoryMb":512,"timeoutSeconds":540,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","region":["asia-northeast3"],"secretEnvironmentVariables":[{"key":"FMP_API_KEY"}],"labels":{},"scheduleTrigger":{"schedule":"10 8 * * 1-5","retryConfig":{},"timeZone":"Asia/Seoul"},"entryPoint":"prefetchChartsData"},"rebuildStockSummaries":{"availableMemoryMb":512,"timeoutSeconds":540,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","region":["asia-northeast3"],"labels":{},"scheduleTrigger":{"schedule":"30 8 * * 1-5","retryConfig":{},"timeZone":"Asia/Seoul"},"entryPoint":"rebuildStockSummaries"},"manualPrefetchStockProfiles":{"availableMemoryMb":512,"timeoutSeconds":540,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","region":["asia-northeast3"],"secretEnvironmentVariables":[{"key":"FMP_API_KEY"}],"labels":{},"httpsTrigger":{},"entryPoint":"manualPrefetchStockProfiles"},"onTransactionCreateUpdatePortfolioValue":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","region":["asia-northeast3"],"labels":{},"eventTrigger":{"eventType":"google.cloud.firestore.document.v1.created","eventFilters":{"database":"(default)","namespace":"(default)"},"eventFilterPathPatterns":{"document":"classes/{classId}/students/{userId}/tradeHistory/{tradeId}"},"retry":false},"entryPoint":"onTransactionCreateUpdatePortfolioValue"},"updateTaxIncomeSummaryCallable":{"availableMemoryMb":512,"timeoutSeconds":300,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","region":["asia-northeast3"],"labels":{},"callableTrigger":{},"entryPoint":"updateTaxIncomeSummaryCallable"},"updateTaxExpenseSummaryCallable":{"availableMemoryMb":512,"timeoutSeconds":300,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","region":["asia-northeast3"],"labels":{},"callableTrigger":{},"entryPoint":"updateTaxExpenseSummaryCallable"},"onDonationCreateUpdateSummary":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","region":["asia-northeast3"],"labels":{},"eventTrigger":{"eventType":"google.cloud.firestore.document.v1.created","eventFilters":{"database":"(default)","namespace":"(default)"},"eventFilterPathPatterns":{"document":"classes/{classId}/donations/{donationId}"},"retry":false},"entryPoint":"onDonationCreateUpdateSummary"},"castVote":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","region":["asia-northeast3"],"labels":{},"callableTrigger":{},"entryPoint":"castVote"},"closeVoting":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","region":["asia-northeast3"],"labels":{},"callableTrigger":{},"entryPoint":"closeVoting"},"applyAssemblyPolicy":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","region":["asia-northeast3"],"labels":{},"callableTrigger":{},"entryPoint":"applyAssemblyPolicy"},"approveMission":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","region":["asia-northeast3"],"labels":{},"callableTrigger":{},"entryPoint":"approveMission"},"cancelMissionApproval":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","region":["asia-northeast3"],"labels":{},"callableTrigger":{},"entryPoint":"cancelMissionApproval"},"processAutoApproveMission":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","region":["asia-northeast3"],"labels":{},"callableTrigger":{},"entryPoint":"processAutoApproveMission"}},"specVersion":"v1alpha1","requiredAPIs":[{"api":"cloudscheduler.googleapis.com","reason":"Needed for scheduled functions."}],"extensions":{},"params":[{"type":"secret","name":"FMP_API_KEY"}]}
+[debug] [2025-06-23T09:19:35.529Z] [functions] Loaded functions definitions from source: addAdminRole, requestTeacherAccount, approveTeacher, createStudentAccounts, deleteStudentAccounts, resetPasswordHttp, fmpProxy, resetPrefetchStatusDaily, prefetchQuotesData, prefetchChartsData, rebuildStockSummaries, manualPrefetchStockProfiles, onTransactionCreateUpdatePortfolioValue, updateTaxIncomeSummaryCallable, updateTaxExpenseSummaryCallable, onDonationCreateUpdateSummary, castVote, closeVoting, applyAssemblyPolicy, approveMission, cancelMissionApproval, processAutoApproveMission.
+[debug] [2025-06-23T09:19:35.529Z] [functions[asia-northeast3-addAdminRole]] http function initialized (http://127.0.0.1:5001/finclass-4477f/asia-northeast3/addAdminRole).
+[debug] [2025-06-23T09:19:35.529Z] [functions[asia-northeast3-requestTeacherAccount]] http function initialized (http://127.0.0.1:5001/finclass-4477f/asia-northeast3/requestTeacherAccount).
+[debug] [2025-06-23T09:19:35.529Z] [functions[asia-northeast3-approveTeacher]] http function initialized (http://127.0.0.1:5001/finclass-4477f/asia-northeast3/approveTeacher).
+[debug] [2025-06-23T09:19:35.529Z] [functions[asia-northeast3-createStudentAccounts]] http function initialized (http://127.0.0.1:5001/finclass-4477f/asia-northeast3/createStudentAccounts).
+[debug] [2025-06-23T09:19:35.530Z] [functions[asia-northeast3-deleteStudentAccounts]] http function initialized (http://127.0.0.1:5001/finclass-4477f/asia-northeast3/deleteStudentAccounts).
+[debug] [2025-06-23T09:19:35.530Z] [functions[asia-northeast3-resetPasswordHttp]] http function initialized (http://127.0.0.1:5001/finclass-4477f/asia-northeast3/resetPasswordHttp).
+[debug] [2025-06-23T09:19:35.530Z] [functions[asia-northeast3-fmpProxy]] http function initialized (http://127.0.0.1:5001/finclass-4477f/asia-northeast3/fmpProxy).
+[debug] [2025-06-23T09:19:35.530Z] [functions[asia-northeast3-resetPrefetchStatusDaily]] function ignored because the pubsub emulator does not exist or is not running.
+[debug] [2025-06-23T09:19:35.530Z] [functions[asia-northeast3-prefetchQuotesData]] function ignored because the pubsub emulator does not exist or is not running.
+[debug] [2025-06-23T09:19:35.530Z] [functions[asia-northeast3-prefetchChartsData]] function ignored because the pubsub emulator does not exist or is not running.
+[debug] [2025-06-23T09:19:35.530Z] [functions[asia-northeast3-rebuildStockSummaries]] function ignored because the pubsub emulator does not exist or is not running.
+[debug] [2025-06-23T09:19:35.530Z] [functions[asia-northeast3-manualPrefetchStockProfiles]] http function initialized (http://127.0.0.1:5001/finclass-4477f/asia-northeast3/manualPrefetchStockProfiles).
+[debug] [2025-06-23T09:19:35.530Z] [functions[asia-northeast3-onTransactionCreateUpdatePortfolioValue]] function ignored because the firestore emulator does not exist or is not running.
+[debug] [2025-06-23T09:19:35.530Z] [functions[asia-northeast3-updateTaxIncomeSummaryCallable]] http function initialized (http://127.0.0.1:5001/finclass-4477f/asia-northeast3/updateTaxIncomeSummaryCallable).
+[debug] [2025-06-23T09:19:35.530Z] [functions[asia-northeast3-updateTaxExpenseSummaryCallable]] http function initialized (http://127.0.0.1:5001/finclass-4477f/asia-northeast3/updateTaxExpenseSummaryCallable).
+[debug] [2025-06-23T09:19:35.530Z] [functions[asia-northeast3-onDonationCreateUpdateSummary]] function ignored because the firestore emulator does not exist or is not running.
+[debug] [2025-06-23T09:19:35.531Z] [functions[asia-northeast3-castVote]] http function initialized (http://127.0.0.1:5001/finclass-4477f/asia-northeast3/castVote).
+[debug] [2025-06-23T09:19:35.531Z] [functions[asia-northeast3-closeVoting]] http function initialized (http://127.0.0.1:5001/finclass-4477f/asia-northeast3/closeVoting).
+[debug] [2025-06-23T09:19:35.531Z] [functions[asia-northeast3-applyAssemblyPolicy]] http function initialized (http://127.0.0.1:5001/finclass-4477f/asia-northeast3/applyAssemblyPolicy).
+[debug] [2025-06-23T09:19:35.531Z] [functions[asia-northeast3-approveMission]] http function initialized (http://127.0.0.1:5001/finclass-4477f/asia-northeast3/approveMission).
+[debug] [2025-06-23T09:19:35.531Z] [functions[asia-northeast3-cancelMissionApproval]] http function initialized (http://127.0.0.1:5001/finclass-4477f/asia-northeast3/cancelMissionApproval).
+[debug] [2025-06-23T09:19:35.531Z] [functions[asia-northeast3-processAutoApproveMission]] http function initialized (http://127.0.0.1:5001/finclass-4477f/asia-northeast3/processAutoApproveMission).
+[info] i  functions: Loaded functions: addAdminRole, requestTeacherAccount, approveTeacher, createStudentAccounts, deleteStudentAccounts, resetPasswordHttp, fmpProxy, resetPrefetchStatusDaily, prefetchQuotesData, prefetchChartsData, rebuildStockSummaries, manualPrefetchStockProfiles, onTransactionCreateUpdatePortfolioValue, updateTaxIncomeSummaryCallable, updateTaxExpenseSummaryCallable, onDonationCreateUpdateSummary, castVote, closeVoting, applyAssemblyPolicy, approveMission, cancelMissionApproval, processAutoApproveMission 
+[warn] !  functions: The following emulators are not running, calls to these services will affect production: firestore, database, pubsub, storage, eventarc, tasks 
