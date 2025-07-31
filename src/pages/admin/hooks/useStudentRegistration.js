@@ -112,20 +112,28 @@ export const useStudentRegistration = () => {
     setResult([]);
 
     try {
+      // 🔍 디버깅 로그 추가
+      console.log("🔍 Firebase Functions 호출 시작");
+      console.log("🔍 classId:", classId);
+      console.log("🔍 validStudents:", validStudents);
+
       const functions = getFunctions(getApp(), "asia-northeast3");
+      console.log("🔍 functions 객체:", functions);
+
       const createFn = httpsCallable(functions, "createStudentAccounts");
-      const { data } = await createFn({
-        students: validStudents,
-        classIdToAssign: classId,
-      });
+      console.log("🔍 httpsCallable 함수:", createFn);
+
+      const requestData = { students: validStudents, classId };
+      console.log("🔍 요청 데이터:", requestData);
+
+      const { data } = await createFn(requestData);
+      console.log("🔍 응답 데이터:", data);
 
       setResult(
         data.results.map((r, i) => {
           const base = `${i + 1}. ${r.name || r.email || r.uid}`;
-
           const fallbackSuccess = `✅ ${base} 생성 완료`;
           const fallbackError = `❌ ${base} 생성 실패`;
-
           const message = r.message?.trim();
 
           return {
@@ -150,6 +158,11 @@ export const useStudentRegistration = () => {
       ]);
       setFileName("");
     } catch (err) {
+      console.error("🔍 에러 상세:", err);
+      console.error("🔍 에러 코드:", err.code);
+      console.error("🔍 에러 메시지:", err.message);
+      console.error("🔍 에러 스택:", err.stack);
+
       showFeedback(`계정 생성 중 오류: ${err.message}`, "error");
       setResult([
         { status: "error", message: `❌ 전체 처리 중 오류: ${err.message}` },
