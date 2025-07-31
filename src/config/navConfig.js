@@ -1,23 +1,9 @@
 // src/config/navConfig.js
 import {
-  Home as HomeIcon,
-  Landmark,
-  LineChart,
-  Receipt,
-  Siren,
-  Building2,
-  ShoppingCart,
-  GraduationCap,
-  Users,
-  UserPlus,
-  KeyRound,
-  SlidersHorizontal,
-  Database,
-  Wrench,
-  ShieldCheck,
-  MapPin,
-  MessageSquare, // ✅ MessageSquare 추가
-} from "lucide-react";
+  Home as HomeIcon, Landmark, LineChart, Receipt, Siren, Building2,
+  ShoppingCart, GraduationCap, Users, UserPlus, KeyRound,
+  SlidersHorizontal, Database, Wrench, ShieldCheck, MapPin, MessageSquare  // ✅ MessageSquare 추가
+} from 'lucide-react';
 
 export const mainNavItems = [
   { label: "홈", path: "/", icon: HomeIcon, type: "main" },
@@ -25,7 +11,7 @@ export const mainNavItems = [
   { label: "은행", path: "/bank", icon: Landmark, type: "main" },
   { label: "신용등급", path: "/credit", icon: GraduationCap, type: "main" },
   { label: "주식거래소", path: "/stock", icon: LineChart, type: "main" },
-  { label: "부동산", path: "/realestate", icon: MapPin, type: "main" },
+  { label: "부동산", path: "/realestate", icon: MapPin, type: "main" },  // ✅ 중복 제거
   { label: "국세청", path: "/tax", icon: Receipt, type: "main" },
   { label: "경찰청", path: "/police", icon: Siren, type: "main" },
   { label: "국회", path: "/assembly", icon: Building2, type: "main" },

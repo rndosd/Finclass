@@ -31,6 +31,7 @@ import Credit from "./pages/credit/Credit";
 import AssemblyHome from "./pages/assembly/AssemblyHome";
 import LawBoard from "./pages/assembly/LawBoard";
 import MissionPage from "./pages/missions/MissionPage";
+import RealEstateRoutes from './routes/realestate';
 
 // === Pages: Admin & Teacher ===
 import AdminDashboard from "./pages/admin/AdminDashboard";
@@ -225,6 +226,15 @@ const AppRoutes = () => {
             debugName="도전과제 페이지"
           >
             <MissionPage />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/realestate/*"
+        element={
+          <ProtectedRoute requiredPermission={PERMISSIONS.REALESTATE} debugName="부동산 페이지">
+            <RealEstateRoutes />
           </ProtectedRoute>
         }
       />
