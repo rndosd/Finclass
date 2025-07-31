@@ -101,15 +101,28 @@ const FeedbackDetailModal = ({
 
     try {
       const feedbackRef = doc(db, "feedbacks", feedback.id);
-      await updateDoc(feedbackRef, {
+      const updateData = {
         adminReply: replyContent.trim(),
         adminReplyAuthor: currentUser.name || "관리자",
         repliedAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
-        // 답변이 달리면 상태를 '처리중'으로 변경 (필요 시)
         status: feedback.status === "pending" ? "processing" : feedback.status,
-      });
-      onClose(); // 성공 시 모달 닫기 (목록 새로고침 유도)
+      };
+
+      await updateDoc(feedbackRef, updateData);
+
+      // ✅ 로컬 feedback 객체 즉시 업데이트
+      feedback.adminReply = replyContent.trim();
+      feedback.adminReplyAuthor = currentUser.name || "관리자";
+      feedback.repliedAt = new Date(); // 현재 시간으로 설정
+      feedback.status =
+        feedback.status === "pending" ? "processing" : feedback.status;
+
+      // ✅ 답변 작성 모드 종료 (모달은 닫지 않음)
+      setIsReplying(false);
+      setReplyContent("");
+
+      // onClose(); // ❌ 이 줄 제거 - 모달을 닫지 않음
     } catch (error) {
       setReplyError("답변 저장 중 오류가 발생했습니다.");
       console.error("Error saving reply:", error);
