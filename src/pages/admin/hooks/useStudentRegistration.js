@@ -123,7 +123,7 @@ export const useStudentRegistration = () => {
       const createFn = httpsCallable(functions, "createStudentAccounts");
       console.log("🔍 httpsCallable 함수:", createFn);
 
-      const requestData = { students: validStudents, classId };
+      const requestData = { students: validStudents, classIdToAssign: classId };
       console.log("🔍 요청 데이터:", requestData);
 
       const { data } = await createFn(requestData);
