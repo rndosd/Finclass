@@ -1,42 +1,37 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-
+import React, { useState, useEffect, useCallback } from 'react';
 import { db } from '../../../firebase';
-
 import { useUser } from '../../../contexts/UserContext';
 import { useFeedback } from '../../../contexts/FeedbackContext';
 import { getPath } from '../utils/taxPathUtils';
-
 import {
     query, collection, collectionGroup,
     where, orderBy, getDocs,
     doc, writeBatch, serverTimestamp,
     increment, Timestamp
 } from 'firebase/firestore';
-
 import dayjs from 'dayjs';
 
 export const usePayrollManager = () => {
-    // === 1. 상태(State) 선언 ===
+    // === 1. 상태(State) 및 컨텍스트 선언 ===
     const { classId, userData, classData } = useUser();
-    const { showFeedback } = useFeedback(); // ⭐ 전역 피드백 함수 가져오기
+    const { showFeedback } = useFeedback();
 
     const currencyUnit = classData?.currencyUnit || '단위';
     const teacherUid = userData?.uid;
 
-    // 데이터 상태 (여러 탭에서 공유)
+    // 데이터 상태
     const [students, setStudents] = useState([]);
     const [jobDefinitions, setJobDefinitions] = useState([]);
-    const [taxRules, setTaxRules] = useState([]); // 모든 세금 규칙 (TaxRuleTab용)
     const [allPayslipsCache, setAllPayslipsCache] = useState(new Map());
+    const [activeAutoTaxRules, setActiveAutoTaxRules] = useState([]);
 
-    // UI 제어 상태 (주로 PayrollTab에서 사용하지만, 로직이 Provider에 있으므로 함께 관리)
+    // UI 제어 상태
     const [editedStudentJobs, setEditedStudentJobs] = useState({});
     const [paymentStartDate, setPaymentStartDate] = useState('');
     const [numberOfWeeksToPay, setNumberOfWeeksToPay] = useState(1);
     const [calculatedEndDate, setCalculatedEndDate] = useState('');
     const [paidStatus, setPaidStatus] = useState({});
     const [selectedStudentsForPayroll, setSelectedStudentsForPayroll] = useState(new Set());
-    const [activeAutoTaxRules, setActiveAutoTaxRules] = useState([]);
     const [individualPayProcessing, setIndividualPayProcessing] = useState({});
     const [processingPayroll, setProcessingPayroll] = useState(false);
 
@@ -50,10 +45,11 @@ export const usePayrollManager = () => {
         payslipsCache: true
     });
 
-    // --- 1. 데이터 로딩 함수 ---
+    // --- 2. 데이터 로딩 및 캐싱 함수 ---
     const fetchAllData = useCallback(async () => {
         if (!classId) return;
-        setIsLoading({ students: true, jobDefinitions: true, taxRules: true, payroll: false, payslipsCache: true });
+        setIsLoading({ students: true, jobDefinitions: true, taxRules: true, payroll: false, payslipsCache: true, savingJobs: false });
+
         try {
             const studentsQuery = query(collection(db, getPath('students', classId)), orderBy("studentNumber"));
             const jobDefsQuery = query(collection(db, getPath('jobDefinitions', classId)), orderBy("name"));
@@ -64,8 +60,7 @@ export const usePayrollManager = () => {
                 getDocs(studentsQuery), getDocs(jobDefsQuery), getDocs(taxRulesQuery), getDocs(payslipsQuery)
             ]);
 
-            const studentList = studentsSnap.docs.map(d => ({ uid: d.id, ...d.data() }));
-            setStudents(studentList);
+            setStudents(studentsSnap.docs.map(d => ({ uid: d.id, ...d.data() })));
             setJobDefinitions(jobDefsSnap.docs.map(d => ({ id: d.id, ...d.data() })));
             setActiveAutoTaxRules(taxRulesSnap.docs.map(d => ({ id: d.id, ...d.data() })));
 
@@ -85,99 +80,11 @@ export const usePayrollManager = () => {
         }
     }, [classId, showFeedback]);
 
-    // --- 2. 월급 계산 로직 ---
-    const calculatePayrollForStudent = (
-        student, // { uid, name, job, creditScore (현재 미사용), assets: { cash } }
-        startDateStr, // 지급 시작일 (YYYY-MM-DD 문자열)
-        numWeeks,     // 지급할 주 수 (Number)
-        currentJobDefinitions,
-        currentActiveAutoTaxRules,
-        currentCurrencyUnit
-    ) => {
-        const jobName = editedStudentJobs[student.uid] || student.job || "없음";
-        const studentJobDef = currentJobDefinitions.find(jd => jd.name === jobName);
+    // --- 3. 핵심 로직 및 헬퍼 함수 ---
 
-        if (jobName === "없음") {
-            return { error: `${student.name || student.uid}: 직업이 "없음"으로 설정되어 급여를 계산할 수 없습니다. 먼저 직업을 배정해주세요.` };
-        }
-
-        if (!studentJobDef || typeof studentJobDef.baseSalary !== 'number') {
-            return { error: `${student.name || student.uid}: 직업(${jobName})의 주급 정보를 찾을 수 없습니다.` };
-        }
-
-        const weeklyBaseSalary = studentJobDef.baseSalary;
-        const actualBasePayment = weeklyBaseSalary * numWeeks;
-
-        let netSalary = actualBasePayment;
-        const deductions = [];
-        let totalDeductions = 0;
-
-        // === ⭐ 안전하게 처리하는 부분 → toLowerCase() 사용!
-        for (const rule of currentActiveAutoTaxRules) {
-            let applies = false;
-
-            if (rule.targetType === 'all') applies = true;
-            else if (rule.targetType === 'job' && jobName === rule.targetValue) applies = true;
-            else if (rule.targetType === 'individual' && Array.isArray(rule.targetValue) && rule.targetValue.includes(student.uid)) applies = true;
-
-            if (applies) {
-                let deductionAmount = 0;
-
-                const ruleTypeSafe = (rule.type || '').toLowerCase(); // ⭐ 안전하게 처리
-
-                if (ruleTypeSafe === 'percent') {
-                    deductionAmount = Math.round(actualBasePayment * (rule.value / 100));
-                } else if (ruleTypeSafe === 'fixed') {
-                    deductionAmount = rule.value * numWeeks;
-                } else {
-                    console.warn(`알 수 없는 세금 유형: ${rule.type} → rule.id=${rule.id}`); // 디버그 안전장치
-                }
-
-                if (deductionAmount !== 0) {
-                    deductions.push({
-                        taxRuleId: rule.id,
-                        name: rule.name,
-                        amount: deductionAmount,
-                        originalRuleType: rule.type,
-                        originalRuleValue: rule.value,
-                    });
-                    totalDeductions += deductionAmount;
-                }
-            }
-        }
-
-        netSalary = actualBasePayment - totalDeductions;
-        netSalary = Math.max(0, netSalary);
-
-        // --- UTC 자정 기준 Timestamp 생성 ---
-        const [year, month, day] = startDateStr.split('-').map(Number);
-        const sDateUTC = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0));
-
-        const eDateUTC = new Date(sDateUTC);
-        eDateUTC.setUTCDate(sDateUTC.getUTCDate() + (numWeeks * 7) - 1);
-
-        return {
-            paymentStartDate: Timestamp.fromDate(sDateUTC),
-            paymentEndDate: Timestamp.fromDate(eDateUTC),
-            numberOfWeeksPaid: Number(numWeeks),
-            paymentPeriodDescription: `${numWeeks}주분 급여 (${startDateStr} ~ ${eDateUTC.toISOString().split('T')[0]})`,
-            studentUid: student.uid,
-            studentName: student.name || 'N/A',
-            studentJob: jobName,
-            originalWeeklyBaseSalary: weeklyBaseSalary,
-            baseSalary: actualBasePayment,
-            deductions,
-            totalDeductions,
-            netSalary,
-            currencyUnit: currentCurrencyUnit,
-        };
-    };
-
-    const savePayslipAndBalance = useCallback(async (batch, studentUid, payrollData, actorForLog) => {
-        // 1. 월급 명세서(paySlips) 저장
-        const payslipCollectionPath = getPath('paySlips', classId, { studentUid }); // ✅ 수정: 객체로 전달
+    const savePayslipAndBalance = useCallback(async (batch, studentUid, payrollData) => {
+        const payslipCollectionPath = getPath('paySlips', classId, { studentUid });
         const newPayslipRef = doc(collection(db, payslipCollectionPath));
-
         const payslipDocData = {
             ...payrollData,
             classId: classId,
@@ -187,154 +94,281 @@ export const usePayrollManager = () => {
         };
         batch.set(newPayslipRef, payslipDocData);
 
-        // 2. 학생 자산(assets.cash)에 순수령액 입금
-        const studentPath = getPath('student', classId, { studentUid }); // ✅ 수정: 객체로 전달
+        const studentPath = getPath('student', classId, { studentUid });
         batch.update(doc(db, studentPath), { "assets.cash": increment(payrollData.netSalary) });
-
-        return { id: newPayslipRef.id, studentUid, ...payslipDocData };
     }, [classId, teacherUid]);
 
-    // --- 지급 기간 중복 체크 헬퍼 함수 ---
-    const checkForOverlappingPayslips = useCallback((studentUid, newPStartDate, newPEndDate) => {
-        if (!studentUid || !newPStartDate || !newPEndDate) {
-            return "날짜 정보가 유효하지 않습니다.";
+    const checkForOverlappingPayslips = useCallback((studentUid, newPStartDate, newPEndDate, jobName) => {
+        if (!studentUid || !newPStartDate || !newPEndDate || !jobName) {
+            return "기간 중복 체크를 위한 정보가 부족합니다.";
         }
-
-        // ⭐ 1. 로컬 캐시에서 해당 학생의 명세서 목록을 가져옵니다.
         const studentPayslips = allPayslipsCache.get(studentUid) || [];
+        if (studentPayslips.length === 0) return false;
 
-        if (studentPayslips.length === 0) {
-            return false; // 캐시에 기록이 없으면 중복될 것도 없음
-        }
+        const newStart = dayjs(newPStartDate).startOf('day');
+        const newEnd = dayjs(newPEndDate).endOf('day');
 
-        const newStartTimestamp = new Date(newPStartDate);
-        newStartTimestamp.setHours(0, 0, 0, 0);
-        const newEndTimestamp = new Date(newPEndDate);
-        newEndTimestamp.setHours(23, 59, 59, 999);
-
-        // ⭐ 2. 가져온 학생의 명세서 목록만 순회하며 중복을 확인합니다.
         for (const payslip of studentPayslips) {
-            if (payslip.paymentStartDate && payslip.paymentEndDate) {
-                const existingStart = payslip.paymentStartDate.toDate();
-                const existingEnd = payslip.paymentEndDate.toDate();
+            // 해당 직업의 명세서가 아니거나, 날짜 정보가 없으면 건너뜀
+            if (payslip.studentJob !== jobName || !payslip.paymentStartDate || !payslip.paymentEndDate) {
+                continue;
+            }
+            const existingStart = dayjs(payslip.paymentStartDate.toDate());
+            const existingEnd = dayjs(payslip.paymentEndDate.toDate());
 
-                // (A시작 <= B끝) AND (A끝 >= B시작)
-                if (
-                    newStartTimestamp.getTime() <= existingEnd.getTime() &&
-                    newEndTimestamp.getTime() >= existingStart.getTime()
-                ) {
-                    const 기간문자열 = `${dayjs(existingStart).format('YYYY.MM.DD')} ~ ${dayjs(existingEnd).format('YYYY.MM.DD')}`;
-                    return `이미 급여가 지급된 기간과 중복됩니다 (기존: ${기간문자열}).`;
-                }
+            // (A시작 <= B끝) AND (A끝 >= B시작)
+            if (newStart.isBefore(existingEnd) && newEnd.isAfter(existingStart)) {
+                return `'${jobName}' 직업에 대해 이미 급여가 지급된 기간(${existingStart.format('YYYY.MM.DD')}~${existingEnd.format('YYYY.MM.DD')})과 중복됩니다.`;
             }
         }
-
         return false; // 중복 없음
     }, [allPayslipsCache]);
 
+    const calculatePayrollForSingleJob = useCallback((student, jobName, startDateStr, numWeeks) => {
+        const jobDef = jobDefinitions.find(jd => jd.name === jobName);
+        if (!jobDef || typeof jobDef.baseSalary !== 'number') {
+            return { error: `직업(${jobName})의 주급 정보를 찾을 수 없습니다.` };
+        }
+
+        const weeklyBaseSalary = jobDef.baseSalary;
+        const baseSalary = weeklyBaseSalary * numWeeks;
+        const deductions = [];
+        let totalDeductions = 0;
+
+        activeAutoTaxRules.forEach(rule => {
+            let applies = false;
+            if (rule.targetType === 'all') applies = true;
+            else if (rule.targetType === 'job' && jobName === rule.targetValue) applies = true;
+            else if (rule.targetType === 'individual' && Array.isArray(rule.targetValue) && rule.targetValue.includes(student.uid)) applies = true;
+
+            if (applies) {
+                let deductionAmount = 0;
+                const ruleTypeSafe = (rule.type || '').toLowerCase();
+                if (ruleTypeSafe === 'percent') {
+                    deductionAmount = Math.round(baseSalary * (rule.value / 100));
+                } else if (ruleTypeSafe === 'fixed') {
+                    deductionAmount = rule.value * numWeeks;
+                }
+                if (deductionAmount > 0) {
+                    deductions.push({ taxRuleId: rule.id, name: rule.name, amount: deductionAmount, originalRuleType: rule.type, originalRuleValue: rule.value });
+                    totalDeductions += deductionAmount;
+                }
+            }
+        });
+
+        const netSalary = Math.max(0, baseSalary - totalDeductions);
+        const sDateUTC = dayjs(startDateStr).startOf('day').toDate();
+        const eDateUTC = dayjs(sDateUTC).add(numWeeks * 7 - 1, 'day').endOf('day').toDate();
+
+        return {
+            paymentStartDate: Timestamp.fromDate(sDateUTC),
+            paymentEndDate: Timestamp.fromDate(eDateUTC),
+            numberOfWeeksPaid: Number(numWeeks),
+            paymentPeriodDescription: `${numWeeks}주분 급여 (${startDateStr} ~ ${dayjs(eDateUTC).format('YYYY-MM-DD')})`,
+            studentUid: student.uid,
+            studentName: student.name || 'N/A',
+            studentJob: jobName,
+            originalWeeklyBaseSalary: weeklyBaseSalary,
+            baseSalary,
+            deductions,
+            totalDeductions,
+            netSalary,
+            currencyUnit,
+        };
+    }, [jobDefinitions, activeAutoTaxRules, currencyUnit]);
+
+    const processAllJobsForStudent = useCallback(async (student, startDate, numWeeks, batch) => {
+        const studentJobs = Array.isArray(student.jobs) ? student.jobs.filter(j => j && j !== "없음") : [];
+        if (studentJobs.length === 0) {
+            return { successCount: 0, errors: [`${student.name}: 배정된 직업이 없습니다.`] };
+        }
+
+        const endDate = dayjs(startDate).add(numWeeks * 7 - 1, 'day').format('YYYY-MM-DD');
+        let successCount = 0;
+        const errors = [];
+
+        for (const jobName of studentJobs) {
+            const processingKey = `${student.uid}_${jobName}`;
+            if (individualPayProcessing[processingKey]) {
+                errors.push(`${student.name}(${jobName}): 이미 개별 처리 중입니다.`);
+                continue;
+            }
+
+            const overlapError = checkForOverlappingPayslips(student.uid, startDate, endDate, jobName);
+            if (overlapError) {
+                errors.push(`${student.name}: ${overlapError}`);
+                continue;
+            }
+
+            const payrollData = calculatePayrollForSingleJob(student, jobName, startDate, numWeeks);
+            if (payrollData.error) {
+                errors.push(`${student.name}(${jobName}): ${payrollData.error}`);
+                continue;
+            }
+
+            await savePayslipAndBalance(batch, student.uid, payrollData);
+            successCount++;
+        }
+
+        return { successCount, errors };
+
+    }, [individualPayProcessing, checkForOverlappingPayslips, calculatePayrollForSingleJob, savePayslipAndBalance]);
+
     const checkPaidStatusForPeriod = useCallback((studentsToCheck, startDateStr, numWeeks) => {
         if (!startDateStr || !(numWeeks > 0) || !studentsToCheck || studentsToCheck.length === 0) {
-            setPaidStatus({}); // 조건이 안 맞으면 상태를 비워줌
+            setPaidStatus({});
             return;
         }
 
         const newPaidStatusUpdates = {};
-        const newPaymentStartJSDate = new Date(startDateStr);
-        newPaymentStartJSDate.setHours(0, 0, 0, 0);
-
-        const newPaymentEndJSDate = new Date(newPaymentStartJSDate);
-        newPaymentEndJSDate.setDate(newPaymentStartJSDate.getDate() + (Number(numWeeks) * 7) - 1);
-        newPaymentEndJSDate.setHours(23, 59, 59, 999);
+        const newStart = dayjs(startDateStr).startOf('day');
+        const newEnd = dayjs(startDateStr).add(numWeeks * 7 - 1, 'day').endOf('day');
 
         studentsToCheck.forEach(student => {
-            const paidKey = `${student.uid}_${startDateStr}_${Number(numWeeks)}`;
-
-            // ⭐ 1. Map에서 해당 학생의 명세서 목록만 가져옵니다. (훨씬 효율적)
+            const studentJobs = Array.isArray(student.jobs) ? student.jobs.filter(j => j && j !== "없음") : [];
             const studentPayslips = allPayslipsCache.get(student.uid) || [];
 
-            // ⭐ 2. .some()을 사용하여 겹치는 내역이 하나라도 있는지 확인합니다.
-            const isPaid = studentPayslips.some(payslip => {
-                if (payslip.paymentStartDate && payslip.paymentEndDate) {
-                    const existingStart = payslip.paymentStartDate.toDate();
-                    const existingEnd = payslip.paymentEndDate.toDate();
-
-                    // 기간 중첩 비교
-                    return newPaymentStartJSDate.getTime() <= existingEnd.getTime() &&
-                        newPaymentEndJSDate.getTime() >= existingStart.getTime();
-                }
-                return false;
+            studentJobs.forEach(jobName => {
+                const paidKey = `${student.uid}_${jobName}_${startDateStr}_${numWeeks}`;
+                const isPaidForPeriod = studentPayslips.some(payslip => {
+                    if (payslip.studentJob !== jobName || !payslip.paymentStartDate || !payslip.paymentEndDate) {
+                        return false;
+                    }
+                    const existingStart = dayjs(payslip.paymentStartDate.toDate());
+                    const existingEnd = dayjs(payslip.paymentEndDate.toDate());
+                    return newStart.isBefore(existingEnd) && newEnd.isAfter(existingStart);
+                });
+                newPaidStatusUpdates[paidKey] = isPaidForPeriod ? 'paid' : 'unpaid';
             });
-
-            newPaidStatusUpdates[paidKey] = isPaid ? 'paid' : undefined;
         });
 
-        setPaidStatus(prev => ({ ...prev, ...newPaidStatusUpdates }));
+        setPaidStatus(newPaidStatusUpdates);
     }, [allPayslipsCache]);
 
+    // --- 4. UI 이벤트 핸들러 ---
 
-
-    // UI 핸들러
-    const handleStudentJobChange = useCallback((uid, newJob) => {
-        setEditedStudentJobs(prev => ({ ...prev, [uid]: newJob }));
+    const handleStudentJobChange = useCallback((uid, newJobs) => {
+        setEditedStudentJobs(prev => {
+            const updated = { ...prev };
+            // 직업이 없거나 빈 배열이면 편집 목록에서 제거
+            if (!newJobs || (Array.isArray(newJobs) && newJobs.length === 0)) {
+                delete updated[uid];
+            } else {
+                updated[uid] = newJobs;
+            }
+            return updated;
+        });
     }, []);
 
     const handleSaveStudentJobs = useCallback(async () => {
         if (Object.keys(editedStudentJobs).length === 0) {
             showFeedback("변경된 직업 정보가 없습니다.", 'info');
-            return;
+            return { success: false, error: "변경사항 없음" };
         }
+        if (!classId) {
+            showFeedback("학급 정보가 없습니다.", 'error');
+            return { success: false, error: "학급 정보 없음" };
+        }
+
         setIsLoading(prev => ({ ...prev, savingJobs: true }));
-        const batch = writeBatch(db);
-        Object.entries(editedStudentJobs).forEach(([uid, jobName]) => {
-            const path = getPath('student', classId, uid);
-            if (path) batch.update(doc(db, path), { job: jobName });
-        });
         try {
+            const batch = writeBatch(db);
+            let batchCount = 0;
+
+            Object.entries(editedStudentJobs).forEach(([uid, jobData]) => {
+                const studentPath = getPath('student', classId, { studentUid: uid });
+                if (studentPath) {
+                    const jobsToSave = Array.isArray(jobData) ? jobData : [jobData];
+                    batch.update(doc(db, studentPath), {
+                        jobs: jobsToSave,
+                        job: jobsToSave[0] || "없음" // 호환성을 위해 첫 번째 직업 저장
+                    });
+                    batchCount++;
+                }
+            });
+
+            if (batchCount === 0) throw new Error('업데이트할 유효한 학생이 없습니다.');
+
             await batch.commit();
-            showFeedback("학생 직업 정보가 성공적으로 저장되었습니다.", 'success');
-            await fetchAllData();
-            setEditedStudentJobs({});
+
+            await fetchAllData(); // 데이터 새로고침
+            setEditedStudentJobs({}); // 편집 상태 초기화
+            return { success: true };
+
         } catch (err) {
+            console.error('학생 직업 정보 저장 오류:', err);
             showFeedback("학생 직업 정보 저장 중 오류 발생: " + err.message, 'error');
+            return { success: false, error: err.message };
         } finally {
             setIsLoading(prev => ({ ...prev, savingJobs: false }));
         }
     }, [editedStudentJobs, classId, fetchAllData, showFeedback]);
 
-    // --- 3. ⭐ 핵심 로직을 담당할 새로운 내부 함수 ---
-    const processSinglePayroll = useCallback(async (student, startDate, numWeeks, batch) => {
-        const paidKey = `${student.uid}_${startDate}_${numWeeks}`;
-        if (paidStatus[paidKey] === 'paid' || individualPayProcessing[student.uid]) {
-            return { success: false, skip: true, message: "이미 처리되었거나 개별 처리 중입니다." };
-        }
-
-        const endDate = new Date(startDate);
-        endDate.setDate(endDate.getDate() + numWeeks * 7 - 1);
-        const overlapError = await checkForOverlappingPayslips(student.uid, startDate, endDate.toISOString().split('T')[0]);
-        if (overlapError) {
-            setPaidStatus(prev => ({ ...prev, [paidKey]: 'failed_check' }));
-            return { success: false, message: overlapError, studentName: student.name };
-        }
-
-        const payrollData = calculatePayrollForStudent(student, startDate, numWeeks, jobDefinitions, activeAutoTaxRules, currencyUnit);
-        if (payrollData.error) {
-            setPaidStatus(prev => ({ ...prev, [paidKey]: 'failed_calc' }));
-            return { success: false, message: payrollData.error, studentName: student.name };
-        }
-
-        // 성공 시, 쓰기 작업을 batch에 추가
-        await savePayslipAndBalance(batch, student.uid, payrollData);
-        return { success: true, data: payrollData };
-
-    }, [paidStatus, individualPayProcessing, checkForOverlappingPayslips, calculatePayrollForStudent, jobDefinitions, activeAutoTaxRules, currencyUnit, savePayslipAndBalance]);
-
-    // --- 4. 수정된 UI 이벤트 핸들러 ---
-    const handlePayIndividualSalary = useCallback(async (studentUid) => {
+    // ✅ 새로 추가: 개별 직업별 급여 지급 함수
+    const handlePayJobSalary = useCallback(async (studentUid, jobName) => {
         if (!teacherUid) {
             showFeedback("교사 정보가 로드되지 않았습니다. 잠시 후 다시 시도해주세요.", 'error');
             return;
         }
 
+        if (!paymentStartDate || numberOfWeeksToPay < 1) {
+            showFeedback("지급 시작일과 주 수를 선택하세요.", 'error');
+            return;
+        }
+
+        const student = students.find(s => s.uid === studentUid);
+        if (!student) {
+            showFeedback("학생 정보를 찾을 수 없습니다.", 'error');
+            return;
+        }
+
+        const jobDef = jobDefinitions.find(jd => jd.name === jobName);
+        if (!jobDef) {
+            showFeedback(`직업 "${jobName}"을 찾을 수 없습니다.`, 'error');
+            return;
+        }
+
+        const processingKey = `${studentUid}_${jobName}`;
+        setIndividualPayProcessing(prev => ({ ...prev, [processingKey]: true }));
+
+        try {
+            // 중복 지급 체크
+            const endDate = dayjs(paymentStartDate).add(numberOfWeeksToPay * 7 - 1, 'day').format('YYYY-MM-DD');
+            const overlapError = checkForOverlappingPayslips(studentUid, paymentStartDate, endDate, jobName);
+
+            if (overlapError) {
+                showFeedback(overlapError, 'error');
+                return;
+            }
+
+            // 급여 계산
+            const payrollData = calculatePayrollForSingleJob(student, jobName, paymentStartDate, numberOfWeeksToPay);
+            if (payrollData.error) {
+                showFeedback(`급여 계산 오류: ${payrollData.error}`, 'error');
+                return;
+            }
+
+            // Firestore에 저장
+            const batch = writeBatch(db);
+            await savePayslipAndBalance(batch, studentUid, payrollData);
+            await batch.commit();
+
+            showFeedback(`${student.name}님의 ${jobName} 급여가 지급되었습니다. (${payrollData.netSalary.toLocaleString()}${currencyUnit})`, 'success');
+            await fetchAllData();
+
+        } catch (error) {
+            console.error('급여 지급 오류:', error);
+            showFeedback(`급여 지급 중 오류가 발생했습니다: ${error.message}`, 'error');
+        } finally {
+            setIndividualPayProcessing(prev => ({ ...prev, [processingKey]: false }));
+        }
+    }, [
+        students, jobDefinitions, paymentStartDate, numberOfWeeksToPay,
+        teacherUid, checkForOverlappingPayslips, calculatePayrollForSingleJob,
+        savePayslipAndBalance, fetchAllData, showFeedback, currencyUnit
+    ]);
+
+    const handlePayIndividualSalary = useCallback(async (studentUid) => {
         if (!paymentStartDate || numberOfWeeksToPay < 1) {
             showFeedback("지급 시작일과 주 수를 선택하세요.", 'error');
             return;
@@ -345,21 +379,22 @@ export const usePayrollManager = () => {
         setIndividualPayProcessing(prev => ({ ...prev, [studentUid]: true }));
         try {
             const batch = writeBatch(db);
-            const result = await processSinglePayroll(student, paymentStartDate, numberOfWeeksToPay, batch);
+            const { successCount, errors } = await processAllJobsForStudent(student, paymentStartDate, numberOfWeeksToPay, batch);
 
-            if (result.success) {
+            if (errors.length > 0) {
+                showFeedback(errors.join('\n'), 'error');
+            }
+            if (successCount > 0) {
                 await batch.commit();
-                showFeedback(`${student.name}님 월급 지급 완료.`, 'success');
-                fetchAllData(); // 데이터 새로고침
-            } else if (!result.skip) {
-                showFeedback(`${result.studentName}: ${result.message}`, 'error');
+                showFeedback(`${student.name}님에게 ${successCount}건의 급여 지급 완료.`, 'success');
+                await fetchAllData();
             }
         } catch (err) {
-            showFeedback(`${student.name}님 월급 지급 중 오류 발생: ${err.message}`, 'error');
+            showFeedback(`${student.name}님 급여 지급 중 오류 발생: ${err.message}`, 'error');
         } finally {
             setIndividualPayProcessing(prev => ({ ...prev, [studentUid]: false }));
         }
-    }, [students, paymentStartDate, numberOfWeeksToPay, processSinglePayroll, fetchAllData, teacherUid, showFeedback]);
+    }, [students, paymentStartDate, numberOfWeeksToPay, processAllJobsForStudent, fetchAllData, showFeedback]);
 
     const handleProcessBulkPayroll = useCallback(async () => {
         const studentsToPay = students.filter(s => selectedStudentsForPayroll.has(s.uid));
@@ -370,33 +405,30 @@ export const usePayrollManager = () => {
 
         setProcessingPayroll(true);
         const batch = writeBatch(db);
-        const errors = [];
-        let successCount = 0;
+        const allErrors = [];
+        let totalSuccessCount = 0;
 
         for (const student of studentsToPay) {
-            const result = await processSinglePayroll(student, paymentStartDate, numberOfWeeksToPay, batch);
-            if (result.success) {
-                successCount++;
-            } else if (!result.skip) {
-                errors.push(`${result.studentName}: ${result.message}`);
-            }
+            const { successCount, errors } = await processAllJobsForStudent(student, paymentStartDate, numberOfWeeksToPay, batch);
+            if (successCount > 0) totalSuccessCount += successCount;
+            if (errors.length > 0) allErrors.push(...errors);
         }
 
         try {
-            if (successCount > 0) {
+            if (totalSuccessCount > 0) {
                 await batch.commit();
             }
-            showFeedback(`일괄 지급 완료: 성공 ${successCount}건, 오류/건너뜀 ${errors.length}건`, errors.length > 0 ? 'warning' : 'success');
-            if (errors.length > 0) console.error("일괄 지급 오류 내역:", errors);
-            if (successCount > 0) fetchAllData();
+            showFeedback(`일괄 지급 완료: 성공 ${totalSuccessCount}건, 오류 ${allErrors.length}건`, allErrors.length > 0 ? 'warning' : 'success');
+            if (allErrors.length > 0) console.error("일괄 지급 오류 내역:", allErrors);
+            if (totalSuccessCount > 0) await fetchAllData();
+
         } catch (err) {
             showFeedback("일괄 지급 최종 저장 중 오류: " + err.message, 'error');
         } finally {
             setProcessingPayroll(false);
         }
-    }, [students, selectedStudentsForPayroll, paymentStartDate, numberOfWeeksToPay, processSinglePayroll, fetchAllData, showFeedback, teacherUid]);
+    }, [students, selectedStudentsForPayroll, paymentStartDate, numberOfWeeksToPay, processAllJobsForStudent, fetchAllData, showFeedback]);
 
-    // --- 학생 선택 관련 핸들러 함수 추가 ---
     const handleToggleStudentSelection = useCallback((uid) => {
         setSelectedStudentsForPayroll(prev => {
             const next = new Set(prev);
@@ -424,15 +456,15 @@ export const usePayrollManager = () => {
 
     useEffect(() => {
         if (students.length > 0 && paymentStartDate && numberOfWeeksToPay > 0 && !isLoading.payslipsCache) {
-            const newEndDate = new Date(paymentStartDate);
-            newEndDate.setDate(newEndDate.getDate() + (numberOfWeeksToPay * 7) - 1);
-            setCalculatedEndDate(newEndDate.toISOString().split('T')[0]);
+            const newEndDate = dayjs(paymentStartDate).add(numberOfWeeksToPay * 7 - 1, 'day').format('YYYY-MM-DD');
+            setCalculatedEndDate(newEndDate);
             checkPaidStatusForPeriod(students, paymentStartDate, numberOfWeeksToPay);
         }
     }, [students, paymentStartDate, numberOfWeeksToPay, isLoading.payslipsCache, checkPaidStatusForPeriod]);
 
     // --- 6. 최종 반환 객체 ---
     return {
+        // 상태
         students,
         jobDefinitions,
         paidStatus,
@@ -442,17 +474,23 @@ export const usePayrollManager = () => {
         paymentStartDate,
         numberOfWeeksToPay,
         selectedStudentsForPayroll,
+        individualPayProcessing,
+        processingPayroll,
         isLoading,
-        fetchAllData,
+        // 상태 설정 함수
         setPaymentStartDate,
         setNumberOfWeeksToPay,
+        // 핸들러 함수
         handleStudentJobChange,
         handleSaveStudentJobs,
         handlePayIndividualSalary,
+        handlePayJobSalary, // ✅ 새로 추가된 개별 직업 급여 지급 함수
         handleProcessBulkPayroll,
         handleToggleStudentSelection,
         handleToggleSelectAllStudents,
+        // 데이터 관리
         refreshData: fetchAllData,
-        showFeedback // ✅ 추가 (CSV에서 사용)
+        fetchAllData, // ✅ PayrollTab에서 사용
+        showFeedback, // ✅ PayrollTab에서 사용
     };
 };

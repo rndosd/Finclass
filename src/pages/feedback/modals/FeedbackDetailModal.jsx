@@ -172,10 +172,10 @@ const FeedbackDetailModal = ({
 
   return (
     <Modal isOpen={true} onClose={handleCloseRequest} maxWidth="4xl">
-      <div className="p-6 relative">
+      <div className="p-6 relative max-h-[90vh] overflow-y-auto">
         <div className="space-y-6">
           {/* 헤더 */}
-          <div className="flex items-start justify-between">
+          <div className="flex items-start justify-between sticky top-0 bg-white py-2 -my-2 z-10">
             <div className="flex items-center gap-3">
               <MessageSquare className="h-6 w-6 text-indigo-500" />
               <div>
@@ -223,8 +223,11 @@ const FeedbackDetailModal = ({
               <h4 className="text-sm font-semibold text-slate-700 mb-2">
                 피드백 내용
               </h4>
-              <div className="text-slate-700 whitespace-pre-wrap leading-relaxed">
-                {feedback.content}
+              {/* 스크롤 가능한 피드백 내용 영역 */}
+              <div className="max-h-48 overflow-y-auto border border-slate-200 rounded-md p-3 bg-white">
+                <div className="text-slate-700 whitespace-pre-wrap leading-relaxed">
+                  {feedback.content}
+                </div>
               </div>
             </div>
           </div>
@@ -259,8 +262,11 @@ const FeedbackDetailModal = ({
                     {formatDate(feedback.repliedAt)}
                   </span>
                 </div>
-                <div className="text-blue-900 whitespace-pre-wrap leading-relaxed">
-                  {feedback.adminReply}
+                {/* 스크롤 가능한 답변 내용 영역 */}
+                <div className="max-h-48 overflow-y-auto border border-blue-300 rounded-md p-3 bg-white/50">
+                  <div className="text-blue-900 whitespace-pre-wrap leading-relaxed">
+                    {feedback.adminReply}
+                  </div>
                 </div>
                 {isAdmin && (
                   <div className="mt-3 pt-3 border-t border-blue-200">
@@ -300,6 +306,7 @@ const FeedbackDetailModal = ({
                       error={!!replyError}
                       disabled={isSavingReply}
                       maxLength={1000}
+                      className="resize-none"
                     />
                     <div className="flex justify-between mt-1">
                       {replyError && (
@@ -344,7 +351,7 @@ const FeedbackDetailModal = ({
           </div>
 
           {/* 액션 버튼들 */}
-          <div className="flex justify-between items-center pt-6 border-t border-slate-200">
+          <div className="flex justify-between items-center pt-6 border-t border-slate-200 sticky bottom-0 bg-white py-2 -my-2">
             <div className="flex gap-2">
               {isAdmin && feedback.status === "pending" && (
                 <Button

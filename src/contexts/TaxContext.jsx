@@ -3,7 +3,6 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import { db } from '../firebase';
 
 import { useUser } from './UserContext';
-import { useFeedback } from './FeedbackContext';
 import { getPath } from '../pages/tax/utils/taxPathUtils';
 
 import {
@@ -13,10 +12,6 @@ import {
     increment, Timestamp
 } from 'firebase/firestore';
 
-
-
-
-
 import dayjs from 'dayjs';
 
 const TaxContext = createContext(null);
@@ -24,7 +19,6 @@ const TaxContext = createContext(null);
 export const TaxProvider = ({ children }) => {
     // === 1. 상태(State) 선언 ===
     const { classId, userData, classData } = useUser();
-    const { showFeedback } = useFeedback(); // ⭐ 전역 피드백 함수 가져오기
 
     const currencyUnit = classData?.currencyUnit || '단위';
     const teacherUid = userData?.uid;
@@ -56,10 +50,11 @@ export const TaxProvider = ({ children }) => {
         payslipsCache: true
     });
 
-    // --- 1. 데이터 로딩 함수 ---
+    // --- 1. 데이터 로딩 함수 (피드백 제거) ---
     const fetchAllData = useCallback(async () => {
         if (!classId) return;
         setIsLoading({ students: true, jobDefinitions: true, taxRules: true, payroll: false, payslipsCache: true });
+
         try {
             const studentsQuery = query(collection(db, getPath('students', classId)), orderBy("studentNumber"));
             const jobDefsQuery = query(collection(db, getPath('jobDefinitions', classId)), orderBy("name"));
@@ -85,11 +80,11 @@ export const TaxProvider = ({ children }) => {
 
         } catch (err) {
             console.error("Error fetching payroll data:", err);
-            showFeedback("데이터 로딩 실패: " + err.message, 'error');
+            // ✅ 피드백 제거: 에러는 콘솔에만 기록, 각 컴포넌트에서 필요시 처리
         } finally {
             setIsLoading({ students: false, jobDefinitions: false, taxRules: false, savingJobs: false, payroll: false, payslipsCache: false });
         }
-    }, [classId, showFeedback]);
+    }, [classId]);
 
     // --- 2. 월급 계산 로직 ---
     const calculatePayrollForStudent = (
@@ -178,10 +173,10 @@ export const TaxProvider = ({ children }) => {
             currencyUnit: currentCurrencyUnit,
         };
     };
-    
+
     const savePayslipAndBalance = useCallback(async (batch, studentUid, payrollData, actorForLog) => {
         // 1. 월급 명세서(paySlips) 저장
-        const payslipCollectionPath = getPath('paySlips', classId, studentUid); // ✅ 수정
+        const payslipCollectionPath = getPath('paySlips', classId, studentUid);
         const newPayslipRef = doc(collection(db, payslipCollectionPath));
 
         const payslipDocData = {
@@ -194,7 +189,7 @@ export const TaxProvider = ({ children }) => {
         batch.set(newPayslipRef, payslipDocData);
 
         // 2. 학생 자산(assets.cash)에 순수령액 입금
-        const studentPath = `${getPath('students', classId)}/${studentUid}`; // ✅ 수정
+        const studentPath = `${getPath('students', classId)}/${studentUid}`;
         batch.update(doc(db, studentPath), { "assets.cash": increment(payrollData.netSalary) });
 
         return { id: newPayslipRef.id, studentUid, ...payslipDocData };
@@ -277,35 +272,40 @@ export const TaxProvider = ({ children }) => {
         setPaidStatus(prev => ({ ...prev, ...newPaidStatusUpdates }));
     }, [allPayslipsCache]);
 
-
-
-    // UI 핸들러
+    // UI 핸들러 (피드백 제거)
     const handleStudentJobChange = useCallback((uid, newJob) => {
         setEditedStudentJobs(prev => ({ ...prev, [uid]: newJob }));
     }, []);
 
     const handleSaveStudentJobs = useCallback(async () => {
         if (Object.keys(editedStudentJobs).length === 0) {
-            showFeedback("변경된 직업 정보가 없습니다.", 'info');
-            return;
+            // ✅ 피드백 제거: 반환값으로 상태 전달
+            return { success: false, error: "변경된 직업 정보가 없습니다.", type: 'info' };
         }
+
         setIsLoading(prev => ({ ...prev, savingJobs: true }));
         const batch = writeBatch(db);
+
         Object.entries(editedStudentJobs).forEach(([uid, jobName]) => {
             const path = getPath('student', classId, uid);
             if (path) batch.update(doc(db, path), { job: jobName });
         });
+
         try {
             await batch.commit();
-            showFeedback("학생 직업 정보가 성공적으로 저장되었습니다.", 'success');
             await fetchAllData();
             setEditedStudentJobs({});
+
+            // ✅ 성공 반환
+            return { success: true, message: "학생 직업 정보가 성공적으로 저장되었습니다." };
         } catch (err) {
-            showFeedback("학생 직업 정보 저장 중 오류 발생: " + err.message, 'error');
+            console.error("학생 직업 정보 저장 오류:", err);
+            // ✅ 실패 반환
+            return { success: false, error: "학생 직업 정보 저장 중 오류 발생: " + err.message, type: 'error' };
         } finally {
             setIsLoading(prev => ({ ...prev, savingJobs: false }));
         }
-    }, [editedStudentJobs, classId, fetchAllData, showFeedback]);
+    }, [editedStudentJobs, classId, fetchAllData]);
 
     // --- 3. ⭐ 핵심 로직을 담당할 새로운 내부 함수 ---
     const processSinglePayroll = useCallback(async (student, startDate, numWeeks, batch) => {
@@ -334,44 +334,45 @@ export const TaxProvider = ({ children }) => {
 
     }, [paidStatus, individualPayProcessing, checkForOverlappingPayslips, calculatePayrollForStudent, jobDefinitions, activeAutoTaxRules, currencyUnit, savePayslipAndBalance]);
 
-    // --- 4. 수정된 UI 이벤트 핸들러 ---
+    // --- 4. 수정된 UI 이벤트 핸들러 (피드백 제거) ---
     const handlePayIndividualSalary = useCallback(async (studentUid) => {
         if (!teacherUid) {
-            showFeedback("교사 정보가 로드되지 않았습니다. 잠시 후 다시 시도해주세요.", 'error');
-            return;
+            return { success: false, error: "교사 정보가 로드되지 않았습니다. 잠시 후 다시 시도해주세요.", type: 'error' };
         }
 
         if (!paymentStartDate || numberOfWeeksToPay < 1) {
-            showFeedback("지급 시작일과 주 수를 선택하세요.", 'error');
-            return;
+            return { success: false, error: "지급 시작일과 주 수를 선택하세요.", type: 'error' };
         }
+
         const student = students.find(s => s.uid === studentUid);
-        if (!student) return;
+        if (!student) return { success: false, error: "학생을 찾을 수 없습니다.", type: 'error' };
 
         setIndividualPayProcessing(prev => ({ ...prev, [studentUid]: true }));
+
         try {
             const batch = writeBatch(db);
             const result = await processSinglePayroll(student, paymentStartDate, numberOfWeeksToPay, batch);
 
             if (result.success) {
                 await batch.commit();
-                showFeedback(`${student.name}님 월급 지급 완료.`, 'success');
                 fetchAllData(); // 데이터 새로고침
+                return { success: true, message: `${student.name}님 월급 지급 완료.` };
             } else if (!result.skip) {
-                showFeedback(`${result.studentName}: ${result.message}`, 'error');
+                return { success: false, error: `${result.studentName}: ${result.message}`, type: 'error' };
             }
+            return { success: false, error: "처리를 건너뛰었습니다.", type: 'info' };
         } catch (err) {
-            showFeedback(`${student.name}님 월급 지급 중 오류 발생: ${err.message}`, 'error');
+            console.error("급여 지급 오류:", err);
+            return { success: false, error: `${student.name}님 월급 지급 중 오류 발생: ${err.message}`, type: 'error' };
         } finally {
             setIndividualPayProcessing(prev => ({ ...prev, [studentUid]: false }));
         }
-    }, [students, paymentStartDate, numberOfWeeksToPay, processSinglePayroll, fetchAllData, teacherUid, showFeedback]);
+    }, [students, paymentStartDate, numberOfWeeksToPay, processSinglePayroll, fetchAllData, teacherUid]);
 
     const handleProcessBulkPayroll = useCallback(async () => {
         const studentsToPay = students.filter(s => selectedStudentsForPayroll.has(s.uid));
         if (studentsToPay.length === 0) {
-            showFeedback("월급을 지급할 학생을 선택해주세요.", 'info');
-            return;
+            return { success: false, error: "월급을 지급할 학생을 선택해주세요.", type: 'info' };
         }
 
         setProcessingPayroll(true);
@@ -392,15 +393,21 @@ export const TaxProvider = ({ children }) => {
             if (successCount > 0) {
                 await batch.commit();
             }
-            showFeedback(`일괄 지급 완료: 성공 ${successCount}건, 오류/건너뜀 ${errors.length}건`, errors.length > 0 ? 'warning' : 'success');
-            if (errors.length > 0) console.error("일괄 지급 오류 내역:", errors);
+
             if (successCount > 0) fetchAllData();
+
+            // ✅ 결과 반환
+            const message = `일괄 지급 완료: 성공 ${successCount}건, 오류/건너뜀 ${errors.length}건`;
+            const type = errors.length > 0 ? 'warning' : 'success';
+
+            return { success: true, message, type, errors };
         } catch (err) {
-            showFeedback("일괄 지급 최종 저장 중 오류: " + err.message, 'error');
+            console.error("일괄 지급 오류:", err);
+            return { success: false, error: "일괄 지급 최종 저장 중 오류: " + err.message, type: 'error' };
         } finally {
             setProcessingPayroll(false);
         }
-    }, [students, selectedStudentsForPayroll, paymentStartDate, numberOfWeeksToPay, processSinglePayroll, fetchAllData, showFeedback, teacherUid]);
+    }, [students, selectedStudentsForPayroll, paymentStartDate, numberOfWeeksToPay, processSinglePayroll, fetchAllData]);
 
     // --- 학생 선택 관련 핸들러 함수 추가 ---
     const handleToggleStudentSelection = useCallback((uid) => {
@@ -449,6 +456,8 @@ export const TaxProvider = ({ children }) => {
             paymentStartDate,
             numberOfWeeksToPay,
             selectedStudentsForPayroll,
+            individualPayProcessing,
+            processingPayroll,
             isLoading,
             fetchAllData,
             setPaymentStartDate,
@@ -466,7 +475,7 @@ export const TaxProvider = ({ children }) => {
     );
 };
 
-// ⭐ 요거 추가!
+// ⭐ Context Hook
 export const useTaxContext = () => {
     const context = useContext(TaxContext);
     if (!context) {
@@ -474,4 +483,3 @@ export const useTaxContext = () => {
     }
     return context;
 };
-
