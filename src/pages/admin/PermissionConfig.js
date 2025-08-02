@@ -6,6 +6,7 @@ export const PERMISSION_CONFIG = [
 
     // --- 국세청 기능 (노란색) ---
     { key: 'page_tax_view', label: '국세청', group: '국세청 기능', color: 'yellow' },
+    { key: 'tax_admin', label: '국세청 관리자', group: '국세청 기능', color: 'yellow' },
 
     // --- 경찰청 기능 (빨간색) ---
     { key: 'page_police_view', label: '경찰청', group: '경찰청 기능', color: 'red' },

@@ -11,7 +11,7 @@ export const mainNavItems = [
   { label: "은행", path: "/bank", icon: Landmark, type: "main" },
   { label: "신용등급", path: "/credit", icon: GraduationCap, type: "main" },
   { label: "주식거래소", path: "/stock", icon: LineChart, type: "main" },
-  { label: "부동산", path: "/realestate", icon: MapPin, type: "main" },  // ✅ 중복 제거
+  { label: "부동산(개발중)", path: "/realestate", icon: MapPin, type: "main" },  // ✅ 중복 제거
   { label: "국세청", path: "/tax", icon: Receipt, type: "main" },
   { label: "경찰청", path: "/police", icon: Siren, type: "main" },
   { label: "국회", path: "/assembly", icon: Building2, type: "main" },

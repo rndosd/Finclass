@@ -280,7 +280,7 @@ const PayrollTab = () => {
                 <Card.Header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
                     <div>
                         <Card.Title>👩‍🎓 학생별 직업 배정 및 개별 지급</Card.Title>
-                        <Card.Description>학생의 직업을 변경하고 저장하거나, 직업별로 개별 급여를 지급할 수 있습니다. (최대 2개 직업)</Card.Description>
+                        <Card.Description>학생의 직업을 변경하고 저장하거나, 직업별로 개별 급여를 지급할 수 있습니다. </Card.Description>
                     </div>
                     <div className="flex gap-2">
                         {Object.keys(editedStudentJobs).length > 0 && (

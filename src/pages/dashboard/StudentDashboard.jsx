@@ -120,10 +120,9 @@ const StudentDashboard = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {/* ⭐️ 수정 적용: assets 통째로 넘기기 */}
                     <HomeAssetCard
-                        jobTitle={currentUser?.job || '직업 없음'}
-                        salary={currentUser?.job?.salary ?? 0}
                         assets={currentUser?.assets || {}}
                         currencyUnit={currencyUnit}
+                        userData={currentUser} // ⭐️ 이 부분을 추가해주세요!
                     />
                     <HomeTaxCard />
                     <HomeCreditCard

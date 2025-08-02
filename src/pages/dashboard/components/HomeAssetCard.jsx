@@ -1,18 +1,17 @@
 // src/pages/dashboard/components/HomeAssetCard.jsx
 
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import { Button, Card } from '../../../components/ui';
 import AssetDetailModal from '../modals/AssetDetailModal';
-import { Briefcase, ArrowRightCircle, CircleDollarSign } from 'lucide-react'; // 아이콘 추가
+import PaySlipModal from '../modals/PaySlipModal';
+import { ArrowRightCircle, FileText } from 'lucide-react';
 
-// recharts 관련 import (이 카드에서는 사용하지 않으므로 제거 가능)
-// import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
-
-const HomeAssetCard = ({ jobTitle, salary, assets, currencyUnit }) => {
+const HomeAssetCard = ({ assets, currencyUnit, userData }) => {
     const [showDetailModal, setShowDetailModal] = useState(false);
+    const [showPaySlipModal, setShowPaySlipModal] = useState(false);
 
     const cash = assets?.cash ?? 0;
-    const stockValue = assets?.stockValue?.value ?? 0
+    const stockValue = assets?.stockValue?.value ?? 0;
     const deposit = assets?.deposit ?? 0;
     const loan = assets?.loan ?? 0;
 
@@ -38,44 +37,49 @@ const HomeAssetCard = ({ jobTitle, salary, assets, currencyUnit }) => {
                     <p className="text-xs text-slate-400 mt-1">(현금+주식+예금-대출)</p>
                 </Card.Content>
 
-                {/* ⭐ 푸터: Flexbox를 사용하여 정보와 버튼을 양쪽으로 분리 */}
+                {/* 푸터: 버튼들만 */}
                 <Card.Footer className="flex items-center justify-between p-4 bg-slate-50/50 border-t">
-                    {/* 왼쪽: 직업 및 월급 정보 */}
-                    <div className="space-y-1 text-sm">
-                        <div className="flex items-center gap-2 text-slate-600">
-                            <Briefcase className="h-4 w-4 flex-shrink-0" />
-                            <span className="truncate">{jobTitle || '직업 없음'}</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-slate-600">
-                            <CircleDollarSign className="h-4 w-4 flex-shrink-0" />
-                            <span className="whitespace-nowrap">월급: {salary?.toLocaleString() || 0} {currencyUnit}</span>
-                        </div>
-                    </div>
-
-                    {/* 오른쪽: 자산 상세 보기 버튼 (작게) */}
                     <Button
                         size="sm"
-                        variant="secondary" // 덜 강조되는 스타일
+                        variant="secondary"
                         onClick={() => setShowDetailModal(true)}
-                        className="flex-shrink-0 ml-2" // 내용이 길어져도 줄어들지 않도록
                     >
-                        상세 보기
-                        <ArrowRightCircle className="h-4 w-4 ml-1.5" />
+                        자산 상세 보기
+                        <ArrowRightCircle className="h-4 w-4 ml-1" />
+                    </Button>
+
+                    <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setShowPaySlipModal(true)}
+                    >
+                        급여명세서
+                        <FileText className="h-4 w-4 ml-1" />
                     </Button>
                 </Card.Footer>
             </Card>
 
-            {/* 자산 상세 보기 모달 렌더링 */}
+            {/* 자산 상세 보기 모달 */}
             {showDetailModal && (
                 <AssetDetailModal
                     isOpen={showDetailModal}
                     onClose={() => setShowDetailModal(false)}
                     assetDetail={{
                         cash,
-                        stockValue: assets?.stockValue ?? { value: 0, usdValue: 0 }, // ✅ 객체로!
+                        stockValue: assets?.stockValue ?? { value: 0, usdValue: 0 },
                         deposit,
                         loan
                     }}
+                    currencyUnit={currencyUnit}
+                />
+            )}
+
+            {/* 급여 명세서 모달 */}
+            {showPaySlipModal && (
+                <PaySlipModal
+                    isOpen={showPaySlipModal}
+                    onClose={() => setShowPaySlipModal(false)}
+                    employeeData={userData} // ✅ userData를 employeeData로 전달
                     currencyUnit={currencyUnit}
                 />
             )}
